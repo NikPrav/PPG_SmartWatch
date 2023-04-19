@@ -50,6 +50,43 @@ def load_key(filename):
     private_key = load_pem_private_key(pemlines, None)
     return private_key
 
+def data_encrpyt(message: str, client_key):
+    # Encoding in bytes
+    ciphertext = client_key.public_key().encrypt(
+        message,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    # Encoding to b64 and then decoding bytes to into utf-8 characters
+    ciphertext = base64.b64encode(ciphertext) 
+    ciphertext = ciphertext.decode('utf-8')
+    
+
+    return ciphertext
+
+def data_decrypt(ciphertext: str, client_key):
+    # Encoding utf-8 data to b64 byte data, followed by decoding to original bytes data
+        # data_b64bytes = ciphertext.encode('utf-8')
+        data_cipher = base64.b64decode(ciphertext)
+
+        # Decrypting bytes data
+        plaintext = client_key.decrypt(
+            data_cipher,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        return plaintext
+
+
+
 
 if __name__ == '__main__':
     if not os.path.exists(client_key_file):
@@ -65,23 +102,22 @@ if __name__ == '__main__':
     # Creating message with bytes
     message = b"Super Secret PPG Data"
 
-    # Encoding in bytes
-    ciphertext = client_key.public_key().encrypt(
-        message,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
+    ciphertext = data_encrpyt(message, client_key)
+
+    # Extracting publickey
+    public_pem = client_key.public_key().public_bytes(
+    encoding=serialization.Encoding.PEM,
+    format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
 
-    # Encoding to b64 and then decoding bytes to into utf-8 characters
-    ciphertext = base64.b64encode(ciphertext) 
-
+    b64_pubkey = base64.b64encode(public_pem).decode('utf-8')
+    
+    # print(f"pubkey={b64_pubkey}")
 
     user_data = {
         "name": "Nikhil",
-        "data": ciphertext.decode("utf-8")
+        "sensor_id": [1],
+        "pub_key": b64_pubkey
     }
 
 
@@ -109,19 +145,7 @@ if __name__ == '__main__':
     # response_json = response.json()
     # data = response_json['data']
 
-        # Encoding utf-8 data to b64 byte data, followed by decoding to original bytes data
-        data_b64bytes = data.encode('utf-8')
-        data_cipher = base64.b64decode(data_b64bytes)
-
-        # Decrypting bytes data
-        plaintext = client_key.decrypt(
-            data_cipher,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
+        plaintext = data_decrypt(data, client_key)
 
         print(plaintext)
     
